@@ -32,7 +32,13 @@ void CsvLineResize(CsvLine_t *this, size_t new_capacity) {
 
 }
 
-void CsvLineSetItem(CsvLine_t *this, const CsvItem_t *item) {
+void CsvLineMoveOwner(CsvLine_t *this, CsvLine_t *newOwner) {
+	*newOwner = *this;
+	this->capacity = INITIALIZE_CAPACITY;
+	this->length = 0;
+}
+
+void CsvLineAddItem(CsvLine_t *this, const CsvItem_t *item) {
 	if (this->length >= this->capacity) {
 		CsvLineResize(this, this->capacity * 2);
 	}
@@ -59,6 +65,17 @@ void CsvContentResize(CsvContent_t *this, size_t new_capacity) {
 
 }
 
+void CsvContentAddLine(CsvContent_t *this, CsvLine_t *line) {
+
+}
+
+void CsvContentMoveBackLine(CsvContent_t *this, CsvLine_t *line) {
+	if (this->length >= this->capacity) {
+		CsvContentResize(this, this->capacity * 2);
+	}
+	CsvLineMoveOwner(line, &this->lines[this->length++]);
+}
+
 typedef struct CsvParser_t {
 	CsvProperties_t	properties;
 	CsvContent_t	content;
@@ -82,39 +99,79 @@ CsvParser_t *CsvParserInit(const CsvProperties_t *props) {
 	return this;
 }
 
+static const uint8_t Eof[] = { 0xFF };
+#define EOF_LENGTH	(sizeof(Eof))
 #define COMMA				(',')
 #define CARRIGE_RETURN		('\r')
 #define LINE_FEED			('\n')
-#define IS_COMMA(charPtr)	(*(charPtr) == COMMA)
-#define IS_CR(charPtr)		(*(charPtr) == LINE_FEED)
-#define IS_LF(charPtr)		(*(charPtr) == CARRIGE_RETURN)
-#define IS_CRLF(charPtr)	(IS_CR(charPtr) && IS_LF(charPtr))
+static bool IsEof(const char *fileData) {
+	return memcmp(fileData, Eof, EOF_LENGTH) ? false : true;
+}
+static inline bool IsComma(char c) {
+	return c == COMMA;
+}
+static inline bool IsCr(char c) {
+	return c == LINE_FEED;
+}
+static inline bool IsLf(char c) {
+	return c == CARRIGE_RETURN;
+}
+static inline bool IsCrLf(char c) {
+	return IsCr(c) && IsLf(c);
+}
+
+static CsvParserStatus parse(CsvParser_t *this) {
+	CsvLine_t line;
+	CsvLineInit(&line);
+
+	char *savedText = this->file.data;
+	for (char *str = this->file.data; true; str++) {
+		char *c = str;
+		char *nextChar = str + 1;
+		if (IsComma(*c)) {
+			CsvLineAddItem(&line, &(CsvItem_t) {
+				.text = savedText,
+			});
+			*c = '\0';
+		} else if (IsCrLf(*c)) {
+			CsvContentMoveBackLine(&this->content, &line);
+			*c = '\0';
+			nextChar = '\0';
+			savedText = nextChar + 1;
+		} else if (IsCr(*c)) {
+			CsvContentMoveBackLine(&this->content, &line);
+			*c = '\0';
+			savedText = nextChar;
+		} else if (IsEof(c)) {
+
+		} else {
+			// do nothing
+		}
+	}
+}
+
+static int LoadFile(CsvParser_t *this, const char *filePath) {
+	ssize_t fileSize = FileGetSize(filePath);
+	if (fileSize < 0) {
+		return fileSize;
+	}
+	size_t allocateSize = fileSize + EOF_LENGTH;
+	this->file.data = malloc(allocateSize);
+	int ret = FileRead(filePath, this->file.data, fileSize);
+	if (ret < 0) {
+		free(this->file.data);
+		this->file.data = NULL;
+		return ret;
+	}
+	this->file.size = allocateSize;
+	// eofを入れる
+	memcpy(&this->file.data[fileSize], Eof, EOF_LENGTH);
+}
 
 CsvParserStatus CsvParserLoadFromFile(CsvParser_t *this, const char *filePath) {
 	if (!this) return CSV_PARSER_INVALID_PARAMETER;
-	if (FileRead(filePath, &this->file) != 0) {
-		return CSV_PARSER_INVALID_PARAMETER;
-	}
-
-	CsvLine_t *line = &this->content.lines[0];
-	CsvItem_t *item = &line->items[0];
-
-	for (const char *str = this->file.data; str; str++) {
-		const char *c = str;
-		const char *nextChar = str + 1;
-		if (IS_COMMA(c)) {
-			CsvLineSetItem(line, &(CsvItem_t) {
-				.text = nextChar,
-			});
-			str++;
-		} else if (IS_CRLF(c)) {
-
-		} else if (IS_CR(c)) {
-
-		} else {
-
-		}
-	}
+	LoadFile(this, filePath);
+	parse(this);
 }
 
 
