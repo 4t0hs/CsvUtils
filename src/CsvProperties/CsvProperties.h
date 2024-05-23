@@ -9,5 +9,4 @@ typedef enum CsvEolCode {
 
 typedef struct CsvPeroperties {
 	bool		hasHeader;
-	CsvEolCode	eolCode;
 } CsvProperties_t;

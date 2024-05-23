@@ -2,102 +2,24 @@
 #include <stdlib.h>
 #include <string.h>
 #include "CsvProperties/CsvProperties.h"
-#include "Utilities/File/File.c"
+#include "Utilities/File/File.h"
+#include "CsvContent/CsvContent.h"
+#include "CsvParser/CsvParser.h"
+#include "CsvParser.h"
 
-typedef struct CsvItem {
-	char *text;
-} CsvItem_t;
-
-void CsvItemSet(CsvItem_t *this, char *value) {
-	this->text = value;
-}
-
-
-#define INITIALIZE_CAPACITY	(4)
-
-typedef struct CsvLine {
-	CsvItem_t *items;
-	size_t		length;
-	size_t		capacity;
-} CsvLine_t;
-
-void CsvLineInit(CsvLine_t *this) {
-	memset(this, 0, sizeof(CsvLine_t));
-	this->capacity = INITIALIZE_CAPACITY;
-	this->items = calloc(this->capacity, sizeof(CsvItem_t));
-	this->length = 0;
-}
-
-void CsvLineResize(CsvLine_t *this, size_t new_capacity) {
-
-}
-
-void CsvLineMoveOwner(CsvLine_t *this, CsvLine_t *newOwner) {
-	*newOwner = *this;
-	this->capacity = INITIALIZE_CAPACITY;
-	this->length = 0;
-}
-
-void CsvLineAddItem(CsvLine_t *this, const CsvItem_t *item) {
-	if (this->length >= this->capacity) {
-		CsvLineResize(this, this->capacity * 2);
-	}
-
-	this->items[this->length++] = *item;
-}
-
-
-typedef struct CsvContent {
-	CsvLine_t	header;
-	CsvLine_t *lines;
-	size_t		length;
-	size_t		capacity;
-} CsvContent_t;
-
-void CsvContentInit(CsvContent_t *this) {
-	memset(this, 0, sizeof(CsvContent_t));
-	this->capacity = INITIALIZE_CAPACITY;
-	this->lines = calloc(this->capacity, sizeof(CsvLine_t));
-	this->length = 0;
-}
-
-void CsvContentResize(CsvContent_t *this, size_t new_capacity) {
-
-}
-
-void CsvContentAddLine(CsvContent_t *this, CsvLine_t *line) {
-
-}
-
-void CsvContentMoveBackLine(CsvContent_t *this, CsvLine_t *line) {
-	if (this->length >= this->capacity) {
-		CsvContentResize(this, this->capacity * 2);
-	}
-	CsvLineMoveOwner(line, &this->lines[this->length++]);
-}
-
-typedef struct CsvParser_t {
+typedef struct FileBuffer {
+	char *data;
+	size_t	size;
+} FileBuffer_t;
+struct CsvParser {
 	CsvProperties_t	properties;
 	CsvContent_t	content;
 	FileBuffer_t	file;
-} CsvParser_t;
-
-typedef enum CsvParserStatus {
-	CSV_PARSER_SUCCESS = 0,
-	CSV_PARSER_INVALID_PARAMETER,
-} CsvParserStatus;
+};
 
 static const char *eolCharacters[] = {
 	"\n", "\r\n",
 };
-
-CsvParser_t *CsvParserInit(const CsvProperties_t *props) {
-	CsvParser_t *this = (CsvParser_t *)calloc(1, sizeof(*this));
-
-	this->properties = *props;
-	CsvContentInit(&this->content);
-	return this;
-}
 
 static const uint8_t Eof[] = { 0xFF };
 #define EOF_LENGTH	(sizeof(Eof))
@@ -120,34 +42,45 @@ static inline bool IsCrLf(char c) {
 	return IsCr(c) && IsLf(c);
 }
 
+#define TERMINATE(c)	((c) = '\0')
+
 static CsvParserStatus parse(CsvParser_t *this) {
 	CsvLine_t line;
-	CsvLineInit(&line);
+	CsvItem_t item;
+	CsvLine_Init(&line);
+	CsvItem_Init(&item);
+	CsvItem_Set(&item, this->file.data);
 
-	char *savedText = this->file.data;
 	for (char *str = this->file.data; true; str++) {
 		char *c = str;
 		char *nextChar = str + 1;
 		if (IsComma(*c)) {
-			CsvLineAddItem(&line, &(CsvItem_t) {
-				.text = savedText,
-			});
-			*c = '\0';
+			TERMINATE(*c);	// 終端
+			CsvLine_MoveBackItem(&line, &item);
+			CsvItem_Set(&item, nextChar);
 		} else if (IsCrLf(*c)) {
-			CsvContentMoveBackLine(&this->content, &line);
-			*c = '\0';
-			nextChar = '\0';
-			savedText = nextChar + 1;
+			TERMINATE(*c);
+			TERMINATE(*nextChar);
+			CsvLine_MoveBackItem(&line, &item);
+			CsvContent_MoveBackLine(&this->content, &line);
+			CsvLine_Init(&line);
+			CsvItem_Set(&item, nextChar + 1);
 		} else if (IsCr(*c)) {
-			CsvContentMoveBackLine(&this->content, &line);
-			*c = '\0';
-			savedText = nextChar;
+			TERMINATE(*c);
+			CsvLine_MoveBackItem(&line, &item);
+			CsvContent_MoveBackLine(&this->content, &line);
+			CsvLine_Init(&line);
+			CsvItem_Set(&item, nextChar);
 		} else if (IsEof(c)) {
-
+			TERMINATE(*c);
+			CsvLine_MoveBackItem(&line, &item);
+			CsvContent_MoveBackLine(&this->content, &line);
+			break;
 		} else {
 			// do nothing
 		}
 	}
+	return CSV_PARSER_SUCCESS;
 }
 
 static int LoadFile(CsvParser_t *this, const char *filePath) {
@@ -166,13 +99,47 @@ static int LoadFile(CsvParser_t *this, const char *filePath) {
 	this->file.size = allocateSize;
 	// eofを入れる
 	memcpy(&this->file.data[fileSize], Eof, EOF_LENGTH);
+	return 0;
 }
 
-CsvParserStatus CsvParserLoadFromFile(CsvParser_t *this, const char *filePath) {
+CsvParser_t *CsvParser_Init(const CsvProperties_t *props) {
+	CsvParser_t *this = (CsvParser_t *)calloc(1, sizeof(*this));
+
+	this->properties = *props;
+	CsvContent_Init(&this->content);
+	return this;
+}
+
+CsvParserStatus CsvParser_LoadFromFile(CsvParser_t *this, const char *filePath) {
 	if (!this) return CSV_PARSER_INVALID_PARAMETER;
 	LoadFile(this, filePath);
-	parse(this);
+	return parse(this);
 }
 
+CsvParserStatus CsvParser_LoadFromData(CsvParser_t *this, const char *data, size_t dataSize) {
+	if (!this) return CSV_PARSER_INVALID_PARAMETER;
+	if (!data || dataSize == 0) {
+		return CSV_PARSER_INVALID_PARAMETER;
+	}
+
+	size_t allocateSize = dataSize + EOF_LENGTH;
+	this->file.data = malloc(allocateSize);
+	this->file.size = allocateSize;
+	memcpy(this->file.data, data, dataSize);
+	memcpy(&this->file.data[dataSize], Eof, EOF_LENGTH);
+	return parse(this);
+}
+
+const CsvContent_t *CsvParser_GetContent(CsvParser_t *this) {
+	return &this->content;
+}
+
+void CsvParser_Destroy(CsvParser_t *this) {
+	if (!this) return;
+
+	CsvContent_Destroy(&this->content);
+	if (this->file.data) free(this->file.data);
+	free(this);
+}
 
 
