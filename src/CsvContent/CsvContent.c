@@ -6,8 +6,7 @@
 #include "CsvContent/CsvLine/CsvLineCollection.h"
 #include "CsvContent.h"
 
-#define INITIALIZE_CAPACITY	(4)
-#define CLEAR(this)			(memset(this, 0, sizeof(CsvContent_t)));
+#define CLEAR(this) (memset(this, 0, sizeof(CsvContent_t)));
 
 void CsvContent_Init(CsvContent_t *this) {
 	CLEAR(this);

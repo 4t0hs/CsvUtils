@@ -8,9 +8,6 @@
 
 #define INITIALIZE_CAPACITY	(4)
 #define CLEAR(this)			(memset(this, 0, sizeof(CsvItemCollection_t)));
-#define foreach(item, this)	for (size_t i = 0, breaked = 0; i < this->length || ; i++, breaked = ~breaked)\
-								for (CsvItem_t *item = &this->_list[i]; breaked == 0; breaked = ~breaked)
-
 
 static inline bool NeedResize(CsvItemCollection_t *this) {
 	return this->length >= this->capacity;

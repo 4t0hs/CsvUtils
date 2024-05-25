@@ -21,13 +21,13 @@ static const char *eolCharacters[] = {
 	"\n", "\r\n",
 };
 
-static const uint8_t Eof[] = { 0xFF };
-#define EOF_LENGTH	(sizeof(Eof))
-#define COMMA				(',')
-#define CARRIGE_RETURN		('\r')
-#define LINE_FEED			('\n')
-static bool IsEof(const char *fileData) {
-	return memcmp(fileData, Eof, EOF_LENGTH) ? false : true;
+#define EOF				((uint8_t)0xFF)
+#define EOF_LENGTH		(sizeof(EOF))
+#define COMMA			(',')
+#define CARRIGE_RETURN	('\r')
+#define LINE_FEED		('\n')
+static bool IsEof(char c) {
+	return (uint8_t)c == EOF;
 }
 static inline bool IsComma(char c) {
 	return c == COMMA;
@@ -43,6 +43,21 @@ static inline bool IsCrLf(char c) {
 }
 
 #define TERMINATE(c)	((c) = '\0')
+
+static inline bool IsExtraChars(char c) {
+	return c == '\0' || IsCr(c) || IsLf(c);
+}
+
+static void FillEof(char *data, size_t size) {
+	// 最後の値は必ずEofにする
+	data[size - 1] = EOF;
+	for (size_t i = size - 2; i != 0; i--) {
+		if (!IsExtraChars(data[i])) {
+			return;
+		}
+		data[i] = EOF;
+	}
+}
 
 static CsvParserStatus parse(CsvParser_t *this) {
 	CsvLine_t line;
@@ -71,7 +86,7 @@ static CsvParserStatus parse(CsvParser_t *this) {
 			CsvContent_MoveBackLine(&this->content, &line);
 			CsvLine_Init(&line);
 			CsvItem_Set(&item, nextChar);
-		} else if (IsEof(c)) {
+		} else if (IsEof(*c)) {
 			TERMINATE(*c);
 			CsvLine_MoveBackItem(&line, &item);
 			CsvContent_MoveBackLine(&this->content, &line);
@@ -86,7 +101,7 @@ static CsvParserStatus parse(CsvParser_t *this) {
 static int LoadFile(CsvParser_t *this, const char *filePath) {
 	ssize_t fileSize = FileGetSize(filePath);
 	if (fileSize < 0) {
-		return fileSize;
+		return (int)fileSize;
 	}
 	size_t allocateSize = fileSize + EOF_LENGTH;
 	this->file.data = malloc(allocateSize);
@@ -97,8 +112,7 @@ static int LoadFile(CsvParser_t *this, const char *filePath) {
 		return ret;
 	}
 	this->file.size = allocateSize;
-	// eofを入れる
-	memcpy(&this->file.data[fileSize], Eof, EOF_LENGTH);
+	FillEof(this->file.data, this->file.size);
 	return 0;
 }
 
@@ -112,7 +126,9 @@ CsvParser_t *CsvParser_Init(const CsvProperties_t *props) {
 
 CsvParserStatus CsvParser_LoadFromFile(CsvParser_t *this, const char *filePath) {
 	if (!this) return CSV_PARSER_INVALID_PARAMETER;
-	LoadFile(this, filePath);
+	if (LoadFile(this, filePath) != 0) {
+		return CSV_PARSER_INVALID_PARAMETER;
+	}
 	return parse(this);
 }
 
@@ -121,12 +137,11 @@ CsvParserStatus CsvParser_LoadFromData(CsvParser_t *this, const char *data, size
 	if (!data || dataSize == 0) {
 		return CSV_PARSER_INVALID_PARAMETER;
 	}
-
 	size_t allocateSize = dataSize + EOF_LENGTH;
 	this->file.data = malloc(allocateSize);
 	this->file.size = allocateSize;
 	memcpy(this->file.data, data, dataSize);
-	memcpy(&this->file.data[dataSize], Eof, EOF_LENGTH);
+	FillEof(this->file.data, allocateSize);
 	return parse(this);
 }
 
@@ -140,6 +155,7 @@ void CsvParser_Destroy(CsvParser_t *this) {
 	CsvContent_Destroy(&this->content);
 	if (this->file.data) free(this->file.data);
 	free(this);
+	this = NULL;
 }
 
 

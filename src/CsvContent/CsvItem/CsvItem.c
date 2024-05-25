@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "CsvContent/CsvItem/CsvItem.h"
-#include "CsvItem.h"
 
 #define CLEAR(this)	(memset(this, 0, sizeof(CsvItem_t)))
 
