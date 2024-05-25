@@ -1,11 +1,11 @@
 #include <stdio.h>
-#include "CsvParser/test/CsvParserTest.h"
+#include "parser/test/csv_parser_test.h"
 
 int main(void) {
-	CsvParserTest_Scenario1();
-	CsvParserTest_Scenario2();
-	CsvParserTest_Scenario3();
-	CsvParserTest_Scenario4();
-	CsvParserTest_Scenario5();
+	csv_parser_test_scenario1();
+	csv_parser_test_scenario2();
+	csv_parser_test_scenario3();
+	csv_parser_test_scenario4();
+	csv_parser_test_scenario5();
 }
 
