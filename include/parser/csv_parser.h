@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 #include "property/csv_property.h"
-#include "content/csv_content.h"
+#include "../content/csv_content.h"
 
 struct CSV_PARSER;
 typedef struct CSV_PARSER CSV_PARSER;

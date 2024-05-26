@@ -5,7 +5,7 @@
 #include "content/item/csv_item.h"
 #include "content/item/csv_item_collection.h"
 
-#define INITIALIZE_CAPACITY	(32)
+#define INITIAL_CAPACITY	(32)
 #define CLEAR(this)			(memset(this, 0, sizeof(CSV_ITEM_COLLECTION)));
 
 static inline bool need_resize(CSV_ITEM_COLLECTION *this) {
@@ -14,7 +14,7 @@ static inline bool need_resize(CSV_ITEM_COLLECTION *this) {
 
 void csv_item_collection_init(CSV_ITEM_COLLECTION *this) {
 	CLEAR(this);
-	this->capacity = INITIALIZE_CAPACITY;
+	this->capacity = INITIAL_CAPACITY;
 	this->_list = calloc(this->capacity, sizeof(CSV_ITEM));
 	this->length = 0;
 }

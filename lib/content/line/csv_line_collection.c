@@ -4,14 +4,14 @@
 #include <stdio.h>
 #include "content/line/csv_line_collection.h"
 
-#define INITIALIZE_CAPACITY	(32)
+#define INITIAL_CAPACITY	(32)
 #define CLEAR(this)			(memset(this, 0, sizeof(CSV_LINE_COLLECTION)))
 
 static inline bool need_resize(CSV_LINE_COLLECTION *this) {
 	return this->length >= this->capacity;
 }
 void csv_line_collection_init(CSV_LINE_COLLECTION *this) {
-	this->capacity = INITIALIZE_CAPACITY;
+	this->capacity = INITIAL_CAPACITY;
 	this->_list = calloc(this->capacity, sizeof(CSV_LINE));
 	this->length = 0;
 }

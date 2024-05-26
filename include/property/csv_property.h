@@ -3,10 +3,10 @@
 #include <stdbool.h>
 
 typedef enum CSV_EOL_CODE {
-	CsvEolCr = 0,
-	CsvEolCrLf,
+	CSV_EOL_CR = 0,
+	CSV_EOL_CRLF,
 } CSV_EOL_CODE;
 
 typedef struct CSV_PROPERTIES {
-	bool		hasHeader;
+	bool		has_header;
 } CSV_PROPERTIES;

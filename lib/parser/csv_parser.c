@@ -37,14 +37,27 @@ static inline bool is_cr(char c) {
 static inline bool is_lf(char c) {
 	return c == CARRIGE_RETURN;
 }
-static inline bool is_crlf(char c) {
-	return is_cr(c) && is_lf(c);
+static inline bool is_crlf(char c, char next_char) {
+	return is_lf(c) && is_cr(next_char);
 }
 
 #define TERMINATE(c)	((c) = '\0')
 
 static inline bool is_extra_chars(char c) {
 	return c == '\0' || is_cr(c) || is_lf(c);
+}
+
+static inline bool is_ascii(char c) {
+	return c > 0x7F;
+}
+
+static bool is_not_supported_char_code(const char *data, size_t size) {
+	for (size_t i = 0; i < size; i++) {
+		if (!is_ascii(data[i])) {
+			return false;
+		}
+	}
+	return true;
 }
 
 static void fill_eof(char *data, size_t size) {
@@ -72,24 +85,24 @@ static CSV_PARSER_STATUS parse(CSV_PARSER *this) {
 			TERMINATE(*c);	// 終端
 			csv_line_move_back_item(&line, &item);
 			csv_item_set(&item, next_char);
-		} else if (is_crlf(*c)) {
+		} else if (is_eof(*c)) {
+			TERMINATE(*c);
+			csv_line_move_back_item(&line, &item);
+			csv_content_move_back_line(&this->content, &line);
+			break;
+		} else if (is_crlf(*c, *next_char)) {
 			TERMINATE(*c);
 			TERMINATE(*next_char);
 			csv_line_move_back_item(&line, &item);
-			CsvContent_MoveBackLine(&this->content, &line);
+			csv_content_move_back_line(&this->content, &line);
 			csv_line_init(&line);
 			csv_item_set(&item, next_char + 1);
 		} else if (is_cr(*c)) {
 			TERMINATE(*c);
 			csv_line_move_back_item(&line, &item);
-			CsvContent_MoveBackLine(&this->content, &line);
+			csv_content_move_back_line(&this->content, &line);
 			csv_line_init(&line);
 			csv_item_set(&item, next_char);
-		} else if (is_eof(*c)) {
-			TERMINATE(*c);
-			csv_line_move_back_item(&line, &item);
-			CsvContent_MoveBackLine(&this->content, &line);
-			break;
 		} else {
 			// do nothing
 		}
@@ -119,7 +132,7 @@ CSV_PARSER *csv_parser_init(const CSV_PROPERTIES *props) {
 	CSV_PARSER *this = (CSV_PARSER *)calloc(1, sizeof(*this));
 
 	this->properties = *props;
-	CsvContent_Init(&this->content);
+	csv_content_init(&this->content);
 	return this;
 }
 
@@ -151,7 +164,7 @@ const CSV_CONTENT *csv_parser_get_content(CSV_PARSER *this) {
 void csv_parser_destroy(CSV_PARSER *this) {
 	if (!this) return;
 
-	CsvContent_Destroy(&this->content);
+	csv_content_destroy(&this->content);
 	if (this->file.data) free(this->file.data);
 	free(this);
 	this = NULL;
