@@ -4,11 +4,12 @@
 extern "C" {
 #endif
 
-int csv_parser_test_scenario1(void);
-void csv_parser_test_scenario2(void);
-void csv_parser_test_scenario3(void);
-void csv_parser_test_scenario4(void);
-void csv_parser_test_scenario5(void);
+	void test_csv_parser_scenario1(void);
+	void test_csv_parser_scenario2(void);
+	void test_csv_parser_scenario3(void);
+	void test_csv_parser_scenario4(void);
+	void test_csv_parser_scenario5(void);
+	void test_csv_parser_scenario6(void);
 
 #ifdef __cplusplus
 }

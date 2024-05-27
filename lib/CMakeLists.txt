@@ -1,5 +1,5 @@
 # 
-set(TARGET_NAME CsvUtils)
+set(TARGET_NAME Csv)
 
 # build target
 # add_executable(${TARGET_NAME} ${SOURCE_DIR}/main.c) 

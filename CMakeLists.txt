@@ -1,15 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
-project(csv_utilities CXX C)
-
-#
-# Download GoogleTest
-#
-include(FetchContent)
-FetchContent_Declare(
-	googletest
-	URL https://github.com/google/googletest/archive/5376968f6948923e2411081fd9372e71a59d8e77.zip
-)
-FetchContent_MakeAvailable(googletest)
+project(LibCsv C)
 
 #
 # definition common variables
@@ -38,7 +28,6 @@ set(WARNING_OPT
 	-Wno-unused-variable
 	-Wno-unused-function
 )
-
 # libraries
 set(LIBS
 )

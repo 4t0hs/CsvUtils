@@ -16,10 +16,6 @@ struct CSV_PARSER {
 	FILE_BUFFER file;
 };
 
-static const char *eol_chars[] = {
-	"\n", "\r\n",
-};
-
 #define EOF				((uint8_t)0xFF)
 #define EOF_LENGTH		(sizeof(EOF))
 #define COMMA			(',')
@@ -41,23 +37,25 @@ static inline bool is_crlf(char c, char next_char) {
 	return is_lf(c) && is_cr(next_char);
 }
 
-#define TERMINATE(c)	((c) = '\0')
+static inline void terminate(char *c) {
+	*c = '\0';
+}
 
 static inline bool is_extra_chars(char c) {
 	return c == '\0' || is_cr(c) || is_lf(c);
 }
 
 static inline bool is_ascii(char c) {
-	return c > 0x7F;
+	return (uint8_t)c <= 0x7F;
 }
 
 static bool is_not_supported_char_code(const char *data, size_t size) {
 	for (size_t i = 0; i < size; i++) {
-		if (!is_ascii(data[i])) {
-			return false;
+		if (!is_ascii(data[i]) && !is_eof(data[i])) {
+			return true;
 		}
 	}
-	return true;
+	return false;
 }
 
 static void fill_eof(char *data, size_t size) {
@@ -71,34 +69,37 @@ static void fill_eof(char *data, size_t size) {
 	}
 }
 
-static CSV_PARSER_STATUS parse(CSV_PARSER *this) {
+static CSV_RETURN_CODE parse(CSV_PARSER *this) {
+	if (is_not_supported_char_code(this->file.data, this->file.size)) {
+		return CSV_INVALID_CHAR_CODE;
+	}
 	CSV_LINE line;
 	CSV_ITEM item;
 	csv_line_init(&line);
 	csv_item_init(&item);
 	csv_item_set(&item, this->file.data);
 
-	for (char *str = this->file.data; true; str++) {
-		char *c = str;
-		char *next_char = str + 1;
-		if (is_comma(*c)) {
-			TERMINATE(*c);	// 終端
-			csv_line_move_back_item(&line, &item);
-			csv_item_set(&item, next_char);
-		} else if (is_eof(*c)) {
-			TERMINATE(*c);
+	for (char *c = this->file.data; true; c++) {
+		if (is_eof(*c)) {
+			terminate(c);
 			csv_line_move_back_item(&line, &item);
 			csv_content_move_back_line(&this->content, &line);
 			break;
+		}
+		char *next_char = c + 1;
+		if (is_comma(*c)) {
+			terminate(c);	// 終端
+			csv_line_move_back_item(&line, &item);
+			csv_item_set(&item, next_char);
 		} else if (is_crlf(*c, *next_char)) {
-			TERMINATE(*c);
-			TERMINATE(*next_char);
+			terminate(c);
+			terminate(next_char);
 			csv_line_move_back_item(&line, &item);
 			csv_content_move_back_line(&this->content, &line);
 			csv_line_init(&line);
 			csv_item_set(&item, next_char + 1);
 		} else if (is_cr(*c)) {
-			TERMINATE(*c);
+			terminate(c);
 			csv_line_move_back_item(&line, &item);
 			csv_content_move_back_line(&this->content, &line);
 			csv_line_init(&line);
@@ -107,7 +108,7 @@ static CSV_PARSER_STATUS parse(CSV_PARSER *this) {
 			// do nothing
 		}
 	}
-	return CSV_PARSER_SUCCESS;
+	return CSV_SUCCESS;
 }
 
 static int load_file(CSV_PARSER *this, const char *file_path) {
@@ -136,18 +137,18 @@ CSV_PARSER *csv_parser_init(const CSV_PROPERTIES *props) {
 	return this;
 }
 
-CSV_PARSER_STATUS csv_parser_load_from_file(CSV_PARSER *this, const char *file_path) {
-	if (!this) return CSV_PARSER_INVALID_PARAMETER;
+CSV_RETURN_CODE csv_parser_load_from_file(CSV_PARSER *this, const char *file_path) {
+	if (!this) return CSV_INVALID_PARAMETER;
 	if (load_file(this, file_path) != 0) {
-		return CSV_PARSER_INVALID_PARAMETER;
+		return CSV_INVALID_PARAMETER;
 	}
 	return parse(this);
 }
 
-CSV_PARSER_STATUS csv_parser_load_from_data(CSV_PARSER *this, const char *data, size_t data_size) {
-	if (!this) return CSV_PARSER_INVALID_PARAMETER;
+CSV_RETURN_CODE csv_parser_load_from_data(CSV_PARSER *this, const char *data, size_t data_size) {
+	if (!this) return CSV_INVALID_PARAMETER;
 	if (!data || data_size == 0) {
-		return CSV_PARSER_INVALID_PARAMETER;
+		return CSV_INVALID_PARAMETER;
 	}
 	size_t allocate_size = data_size + EOF_LENGTH;
 	this->file.data = malloc(allocate_size);
@@ -158,6 +159,7 @@ CSV_PARSER_STATUS csv_parser_load_from_data(CSV_PARSER *this, const char *data, 
 }
 
 const CSV_CONTENT *csv_parser_get_content(CSV_PARSER *this) {
+	if (!this) return NULL;
 	return &this->content;
 }
 

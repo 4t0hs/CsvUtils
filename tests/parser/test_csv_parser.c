@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "include/parser/csv_parser.h"
 #include "include/content/csv_content.h"
+#include "test_csv_parser.h"
 
 static void assert_content(CSV_CONTENT *expected, CSV_CONTENT *actual) {
 	assert(expected->lines.length == actual->lines.length);
@@ -19,7 +20,7 @@ static void assert_content(CSV_CONTENT *expected, CSV_CONTENT *actual) {
 }
 #define num_of_table(table) (sizeof(table)/sizeof(table[0]))
 
-int csv_parser_test_scenario1(void) {
+void test_csv_parser_scenario1(void) {
 	const char data[] =
 		"title1,title2,title3\n"
 		"abc,def,ghi";
@@ -33,13 +34,12 @@ int csv_parser_test_scenario1(void) {
 
 	CSV_PROPERTIES props = { .has_header = false };
 	CSV_PARSER *parser = csv_parser_init(&props);
-	assert(csv_parser_load_from_data(parser, data, strlen(data)) == CSV_PARSER_SUCCESS);
+	assert(csv_parser_load_from_data(parser, data, strlen(data)) == CSV_SUCCESS);
 	assert_content(&content, (CSV_CONTENT *)csv_parser_get_content(parser));
 	csv_parser_destroy(parser);
-	return 0;
 }
 
-void csv_parser_test_scenario2(void) {
+void test_csv_parser_scenario2(void) {
 	const char data[] =
 		"title1,title2\r\n"
 		"data1,data2";
@@ -53,12 +53,12 @@ void csv_parser_test_scenario2(void) {
 	CSV_PROPERTIES props = { .has_header = false };
 	CSV_PARSER *parser = csv_parser_init(&props);
 
-	assert(csv_parser_load_from_data(parser, data, strlen(data)) == CSV_PARSER_SUCCESS);
+	assert(csv_parser_load_from_data(parser, data, strlen(data)) == CSV_SUCCESS);
 	assert_content(&content, (CSV_CONTENT *)csv_parser_get_content(parser));
 	csv_parser_destroy(parser);
 }
 
-void csv_parser_test_scenario3(void) {
+void test_csv_parser_scenario3(void) {
 	const char data[] =
 		"title1,title2,title3\n"
 		"data1";
@@ -73,12 +73,12 @@ void csv_parser_test_scenario3(void) {
 	CSV_PROPERTIES props = { .has_header = false };
 	CSV_PARSER *parser = csv_parser_init(&props);
 
-	assert(csv_parser_load_from_data(parser, data, strlen(data)) == CSV_PARSER_SUCCESS);
+	assert(csv_parser_load_from_data(parser, data, strlen(data)) == CSV_SUCCESS);
 	assert_content(&content, (CSV_CONTENT *)csv_parser_get_content(parser));
 	csv_parser_destroy(parser);
 }
 
-void csv_parser_test_scenario4(void) {
+void test_csv_parser_scenario4(void) {
 	const char data[] = "";
 	CSV_ITEM items[] = { {""} };
 	CSV_LINE lines[] = {
@@ -89,12 +89,19 @@ void csv_parser_test_scenario4(void) {
 	CSV_PROPERTIES props = { .has_header = false };
 	CSV_PARSER *parser = csv_parser_init(&props);
 
-	assert(csv_parser_load_from_data(parser, data, sizeof(data)) == CSV_PARSER_SUCCESS);
+	assert(csv_parser_load_from_data(parser, data, sizeof(data)) == CSV_SUCCESS);
 	assert_content(&content, (CSV_CONTENT *)csv_parser_get_content(parser));
 	csv_parser_destroy(parser);
 }
 
-void csv_parser_test_scenario5(void) {
+void test_csv_parser_scenario5(void) {
+	/**
+	 * input.csv
+	 *  scenario5\r\n
+	 *  title1,title2\r\n
+	 *  data1,data2\r\n
+	 *  EOF
+	*/
 	CSV_ITEM items0[] = { {"scenario5"} };
 	CSV_ITEM items1[] = { {"title1"}, {"title2"} };
 	CSV_ITEM items2[] = { {"data1"}, {"data2"} };
@@ -106,7 +113,17 @@ void csv_parser_test_scenario5(void) {
 	CSV_CONTENT content = { {._list = lines, .length = num_of_table(lines)} };
 	CSV_PROPERTIES props = { .has_header = false };
 	CSV_PARSER *parser = csv_parser_init(&props);
-	assert(csv_parser_load_from_file(parser, "/home/atohs/c_lang/CsvUtils/tests/parser/input.csv") == CSV_PARSER_SUCCESS);
+	assert(csv_parser_load_from_file(parser, "/home/atohs/c_lang/CsvUtils/tests/parser/input.csv") == CSV_SUCCESS);
 	assert_content(&content, (CSV_CONTENT *)csv_parser_get_content(parser));
 	csv_parser_destroy(parser);
 }
+
+void test_csv_parser_scenario6(void) {
+	const char data[] =
+		"タイトル1,title2"
+		"データ1,data2";
+	CSV_PARSER *parser = csv_parser_init(&(CSV_PROPERTIES) { .has_header = false });
+	assert(csv_parser_load_from_data(parser, data, sizeof(data)) == CSV_INVALID_CHAR_CODE);
+	csv_parser_destroy(parser);
+}
+
