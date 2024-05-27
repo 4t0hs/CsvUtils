@@ -5,7 +5,7 @@
 #include "csv_line.h"
 
 typedef struct CSV_LINE_COLLECTION {
-	CSV_LINE *_list;
+	CSV_LINE *list;
 	size_t length;
 	size_t capacity;
 } CSV_LINE_COLLECTION;

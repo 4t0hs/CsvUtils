@@ -6,7 +6,7 @@
 #include "csv_item.h"
 
 typedef struct CSV_ITEM_COLLECTION {
-	CSV_ITEM *_list;
+	CSV_ITEM *list;
 	size_t length;
 	size_t capacity;
 } CSV_ITEM_COLLECTION;

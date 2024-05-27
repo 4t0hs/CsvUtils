@@ -12,12 +12,12 @@ static inline bool need_resize(CSV_LINE_COLLECTION *this) {
 }
 void csv_line_collection_init(CSV_LINE_COLLECTION *this) {
 	this->capacity = INITIAL_CAPACITY;
-	this->_list = calloc(this->capacity, sizeof(CSV_LINE));
+	this->list = calloc(this->capacity, sizeof(CSV_LINE));
 	this->length = 0;
 }
 
 void csv_line_collection_resize(CSV_LINE_COLLECTION *this, size_t new_capacity) {
-	this->_list = realloc(this->_list, new_capacity * sizeof(CSV_LINE));
+	this->list = realloc(this->list, new_capacity * sizeof(CSV_LINE));
 	this->capacity = new_capacity;
 }
 
@@ -25,20 +25,20 @@ void csv_line_collection_move_and_add(CSV_LINE_COLLECTION *this, CSV_LINE *move_
 	if (need_resize(this)) {
 		csv_line_collection_resize(this, this->capacity * 2);
 	}
-	csv_line_move_owner(move_line, &this->_list[this->length++]);
+	csv_line_move_owner(move_line, &this->list[this->length++]);
 }
 
 void csv_line_collection_destroy(CSV_LINE_COLLECTION *this) {
 	for (size_t i = 0; i < this->length; i++) {
-		CSV_LINE *line = &this->_list[i];
+		CSV_LINE *line = &this->list[i];
 		csv_line_destroy(line);
 	}
-	free(this->_list);
+	free(this->list);
 }
 
 void csv_line_collection_print(CSV_LINE_COLLECTION *this) {
 	for (size_t i = 0; i < this->length; i++) {
-		CSV_LINE *line = &this->_list[i];
+		CSV_LINE *line = &this->list[i];
 		csv_line_print(line);
 		printf("\n");
 	}
@@ -49,8 +49,8 @@ bool csv_line_collection_equals(CSV_LINE_COLLECTION *this, CSV_LINE_COLLECTION *
 		return false;
 	}
 	for (size_t i = 0; i < this->length; i++) {
-		CSV_LINE *line1 = &this->_list[i];
-		CSV_LINE *line2 = &lines->_list[i];
+		CSV_LINE *line1 = &this->list[i];
+		CSV_LINE *line2 = &lines->list[i];
 		if (!csv_line_equals(line1, line2)) {
 			return false;
 		}

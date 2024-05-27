@@ -15,12 +15,12 @@ static inline bool need_resize(CSV_ITEM_COLLECTION *this) {
 void csv_item_collection_init(CSV_ITEM_COLLECTION *this) {
 	CLEAR(this);
 	this->capacity = INITIAL_CAPACITY;
-	this->_list = calloc(this->capacity, sizeof(CSV_ITEM));
+	this->list = calloc(this->capacity, sizeof(CSV_ITEM));
 	this->length = 0;
 }
 
 void csv_item_collection_resize(CSV_ITEM_COLLECTION *this, size_t new_capacity) {
-	this->_list = realloc(this->_list, new_capacity * sizeof(CSV_ITEM));
+	this->list = realloc(this->list, new_capacity * sizeof(CSV_ITEM));
 	this->capacity = new_capacity;
 }
 
@@ -33,15 +33,15 @@ void csv_item_collection_move_and_add(CSV_ITEM_COLLECTION *this, CSV_ITEM *item)
 	if (need_resize(this)) {
 		csv_item_collection_resize(this, this->capacity * 2);
 	}
-	csv_item_move_owner(item, &this->_list[this->length++]);
+	csv_item_move_owner(item, &this->list[this->length++]);
 }
 
 void csv_item_collection_destroy(CSV_ITEM_COLLECTION *this) {
 	for (size_t i = 0; i < this->length; i++) {
-		CSV_ITEM *item = &this->_list[i];
+		CSV_ITEM *item = &this->list[i];
 		csv_item_destroy(item);
 	}
-	free(this->_list);
+	free(this->list);
 }
 
 void csv_item_collection_clear(CSV_ITEM_COLLECTION *this) {
@@ -50,7 +50,7 @@ void csv_item_collection_clear(CSV_ITEM_COLLECTION *this) {
 
 void csv_item_collection_print(CSV_ITEM_COLLECTION *this) {
 	for (size_t i = 0; i < this->length; i++) {
-		CSV_ITEM *item = &this->_list[i];
+		CSV_ITEM *item = &this->list[i];
 		csv_item_print(item);
 		printf(", ");
 	}
@@ -62,8 +62,8 @@ bool csv_item_collection_equals(CSV_ITEM_COLLECTION *this, CSV_ITEM_COLLECTION *
 	}
 
 	for (size_t i = 0; i < this->length; i++) {
-		CSV_ITEM *item1 = &this->_list[i];
-		CSV_ITEM *item2 = &items->_list[i];
+		CSV_ITEM *item1 = &this->list[i];
+		CSV_ITEM *item2 = &items->list[i];
 		if (!csv_item_equals(item1, item2)) {
 			return false;
 		}
